@@ -1,8 +1,8 @@
 """The daily checks job.
 
 For one run date it evaluates every dataset's declared checks over the dataset's
-records, stores one result per record and check, and tells the dataset's owner about
-each failure.
+records, stores one result per record and check, and sends each owner one digest listing
+every failure in the datasets they own.
 
     python -m jobs.run_checks --date 2026-11-03
 """
@@ -91,7 +91,7 @@ def run_checks(session: Session, run_date: date) -> Run:
     for record in session.scalars(select(Record).order_by(Record.dataset_id, Record.id)):
         records_by_dataset[record.dataset_id].append(record)
 
-    failures: list[tuple[str, Failure]] = []
+    failures_by_owner: dict[str, list[Failure]] = defaultdict(list)
     for dataset in datasets:
         records = records_by_dataset[dataset.id]
         for check in checks_by_dataset[dataset.id]:
@@ -102,16 +102,18 @@ def run_checks(session: Session, run_date: date) -> Run:
                 session.add(Result(run_id=run.id, check_id=check.id, record_id=record.id,
                                    passed=not detail, detail=detail))
                 if detail:
-                    failures.append((dataset.owner, Failure(dataset.name, check.name, record.key, detail)))
+                    failures_by_owner[dataset.owner].append(
+                        Failure(dataset.name, check.name, record.key, detail))
 
     # The results and the finished run are written together, in batched inserts and one commit.
     run.status = "succeeded"
     run.finished_at = datetime.now(UTC)
     session.commit()
 
+    # One digest per owner with failures, sent only once the results are committed.
     notifier = Notifier()
-    for owner, failure in failures:
-        notifier.send_failure(owner, failure)
+    for owner, failures in failures_by_owner.items():
+        notifier.send_digest(owner, run_date, failures)
     return run
 
 

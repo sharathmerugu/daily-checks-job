@@ -57,6 +57,23 @@ was enough to run the tests (against Postgres on port 55432, with `uv run pytest
 
 ## Part 2: Digest and impact
 
+### 2.1 Digest
+
+- The job collects failures per owner while it evaluates, and after the commit calls
+  `Notifier.send_digest(owner, run_date, failures)` once per owner. `send_failure` is no
+  longer called (left in `Notifier`, unused).
+- **One digest per owner, not per dataset**: an owner of several datasets gets one message
+  listing the failures of all of them (each `Failure` names its dataset).
+- **Owners with no failures get no digest.** The brief says the digest lists failures; an
+  empty "all clear" message every day would be noise. Easy to add if wanted.
+- Failures inside a digest keep the evaluation order (dataset id, check id, record id), so
+  messages are stable from run to run.
+- Tests (`tests/test_job.py`): the old one-message-per-failure test now asserts one digest
+  with both failures and no `send_failure` calls; new tests cover one owner with two datasets
+  (one digest) alongside a second owner, and an owner with no failures (no digest).
+
+### 2.2 Impact
+
 _In progress._
 
 ## Part 3: Add-a-check-kind skill

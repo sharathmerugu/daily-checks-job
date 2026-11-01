@@ -39,16 +39,46 @@ def test_job_records_the_run(session, notifications):
     assert stored.finished_at is not None
 
 
-def test_job_tells_the_owner_about_each_failure(session, notifications):
+def test_job_sends_each_owner_one_digest_listing_every_failure(session, notifications):
     add_dataset(session, "customers", owner="ana@example.com", checks=CHECKS, records={
         "a": {"email": "a@example.com", "country": "US"},
         "b": {"country": "GB"},
     })
     run_checks(session, RUN_DATE)
-    assert sorted((owner, f.record_key, f.check) for owner, f in notifications.failures) == [
-        ("ana@example.com", "a", "country known"),
-        ("ana@example.com", "b", "email present"),
+    assert notifications.failures == []
+    assert len(notifications.digests) == 1
+    owner, run_date, failures = notifications.digests[0]
+    assert (owner, run_date) == ("ana@example.com", RUN_DATE)
+    assert sorted((f.dataset, f.record_key, f.check) for f in failures) == [
+        ("customers", "a", "country known"),
+        ("customers", "b", "email present"),
     ]
+
+
+def test_job_digest_covers_every_dataset_an_owner_has(session, notifications):
+    add_dataset(session, "customers", owner="ana@example.com", checks=CHECKS,
+                records={"a": {"country": "GB"}})
+    add_dataset(session, "prospects", owner="ana@example.com", checks=CHECKS,
+                records={"p": {"email": "p@example.com", "country": "US"}})
+    add_dataset(session, "suppliers", owner="bo@example.com", checks=CHECKS,
+                records={"s": {"country": "GB"}})
+    run_checks(session, RUN_DATE)
+    sent = {owner: sorted((f.dataset, f.record_key) for f in failures)
+            for owner, _, failures in notifications.digests}
+    assert len(notifications.digests) == 2
+    assert sent == {
+        "ana@example.com": [("customers", "a"), ("prospects", "p")],
+        "bo@example.com": [("suppliers", "s")],
+    }
+
+
+def test_job_sends_no_digest_to_an_owner_without_failures(session, notifications):
+    add_dataset(session, "customers", owner="ana@example.com", checks=CHECKS,
+                records={"a": {"email": "a@example.com", "country": "GB"}})
+    add_dataset(session, "suppliers", owner="bo@example.com", checks=CHECKS,
+                records={"s": {"country": "GB"}})
+    run_checks(session, RUN_DATE)
+    assert [owner for owner, _, _ in notifications.digests] == ["bo@example.com"]
 
 
 @contextmanager
