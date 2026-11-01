@@ -263,7 +263,7 @@ so a process change made in one place reaches the agent.
 
 ## Time spent
 
-About 1.5 hours.
+About 2 hours.
 
 ## With more time
 
