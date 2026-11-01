@@ -74,7 +74,43 @@ was enough to run the tests (against Postgres on port 55432, with `uv run pytest
 
 ### 2.2 Impact
 
-_In progress._
+`GET /runs/{run_id}/datasets/{dataset_id}/impact` (`app/main.py`, `dataset_impact`).
+
+**Response shape** (200):
+
+```json
+{"run_id": 1, "dataset_id": 1,
+ "impacted": [{"dataset_id": 4, "name": "stg_customers", "owner": "ana@example.com", "hops": 1},
+              {"dataset_id": 8, "name": "customer_ltv", "owner": "dan@example.com", "hops": 2}]}
+```
+
+- Echoes the run and dataset so the response stands on its own. Each impacted dataset carries
+  its id (to follow up with other endpoints), name, **owner** (the people to warn are the
+  point of an impact query) and `hops`. Sorted by `(hops, name)`: nearest first, stable order.
+- A failed dataset with nothing downstream returns 200 with `"impacted": []`.
+
+**Status codes**
+
+- **404** when the run or the dataset does not exist (detail names which one), matching
+  `/runs/{run_id}/results`.
+- **409** when both exist but the dataset had no failures in that run. The brief defines impact
+  only for a dataset that failed; returning an empty list would be indistinguishable from "failed,
+  but nothing is built from it", and 404 would wrongly suggest the run or dataset is missing.
+  409 says the request is valid but does not apply to the current state of that run.
+
+**Where the traversal runs:** in Python, after one query that loads every lineage edge
+(`downstream_hops`, a breadth-first search). BFS reaches each dataset first along a shortest
+path, so `hops` is the fewest; a visited set keeps each dataset once and stops cycles (the
+fixtures have one: `churn_scores` <-> `customer_segments`). The failed dataset itself is left out,
+even when a cycle leads back to it. Five queries in total (run, dataset, a failure `EXISTS`, the
+edges, the impacted datasets), however big the graph. I chose Python over a recursive CTE because
+the graph here is small, the code is easier to read and test, and a CTE on a cyclic graph needs
+path tracking that blows up on dense graphs. At scale see Part 4, question 2.
+
+**Tests** (`tests/test_impact.py`): a chain (1, 2, 3 hops; unrelated dataset left out), a diamond
+plus shortcut (each dataset once, fewest hops), a cycle including one back to the failed dataset,
+nothing downstream (empty, and upstream datasets are not included), both 404s, the 409, and a query
+count that does not grow with the graph. Also checked by hand on the seeded fixtures.
 
 ## Part 3: Add-a-check-kind skill
 
