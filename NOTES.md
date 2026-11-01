@@ -102,8 +102,8 @@ was enough to run the tests (against Postgres on port 55432, with `uv run pytest
 (`downstream_hops`, a breadth-first search). BFS reaches each dataset first along a shortest
 path, so `hops` is the fewest; a visited set keeps each dataset once and stops cycles (the
 fixtures have one: `churn_scores` <-> `customer_segments`). The failed dataset itself is left out,
-even when a cycle leads back to it. Five queries in total (run, dataset, a failure `EXISTS`, the
-edges, the impacted datasets), however big the graph. I chose Python over a recursive CTE because
+even when a cycle leads back to it. At most five queries (run, dataset, a failure `EXISTS`, the
+edges, the impacted datasets; four when nothing is downstream), however big the graph. I chose Python over a recursive CTE because
 the graph here is small, the code is easier to read and test, and a CTE on a cyclic graph needs
 path tracking that blows up on dense graphs. At scale see Part 4, question 2.
 
@@ -250,7 +250,7 @@ so a process change made in one place reaches the agent.
 
 ## Time spent
 
-_To fill in at submission._
+About 1.5 hours.
 
 ## With more time
 
