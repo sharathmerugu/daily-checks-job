@@ -16,6 +16,7 @@ def test_a_valid_declaration_of_each_kind():
     declare(kind="accuracy", params={"allowed": ["a"]})
     declare(kind="accuracy", params={"min": 0})
     declare(kind="timeliness", params={"max_age_hours": 24})
+    declare(kind="uniqueness")
 
 
 @pytest.mark.parametrize("fields", [
@@ -24,6 +25,7 @@ def test_a_valid_declaration_of_each_kind():
     {"kind": "accuracy"},
     {"kind": "accuracy", "params": {"allowed": ["a"], "max": 3}},
     {"kind": "timeliness", "params": {"max_age_hours": 0}},
+    {"kind": "uniqueness", "params": {"case_sensitive": False}},
 ])
 def test_invalid_declarations_are_rejected(fields):
     with pytest.raises(ValidationError):

@@ -38,3 +38,18 @@ Params: `max_age_hours` (positive integer).
 ```json
 {"name": "updated in the last 24 hours", "kind": "timeliness", "field": "updated_at", "params": {"max_age_hours": 24}}
 ```
+
+## uniqueness
+
+A record passes when no other record in the same dataset has the same value in the field.
+Every record sharing a value fails, not only the later ones. A missing or null value fails as
+missing and is never counted as a duplicate. Values are compared as JSON values, strictly:
+`1`, `1.0`, `"1"` and `true` are all different, strings are case- and whitespace-sensitive
+(`""` is a value like any other), and lists and objects are compared by content (key order
+in an object does not matter).
+
+Params: none.
+
+```json
+{"name": "customer id unique", "kind": "uniqueness", "field": "customer_id"}
+```

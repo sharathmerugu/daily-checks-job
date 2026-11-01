@@ -36,12 +36,17 @@ class TimelinessParams(BaseModel):
     max_age_hours: int = Field(gt=0)
 
 
-CheckKind = Literal["completeness", "accuracy", "timeliness"]
+class UniquenessParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+CheckKind = Literal["completeness", "accuracy", "timeliness", "uniqueness"]
 
 PARAMS: dict[str, type[BaseModel]] = {
     "completeness": CompletenessParams,
     "accuracy": AccuracyParams,
     "timeliness": TimelinessParams,
+    "uniqueness": UniquenessParams,
 }
 
 

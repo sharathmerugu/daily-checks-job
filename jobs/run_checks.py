@@ -8,8 +8,9 @@ every failure in the datasets they own.
 """
 
 import argparse
+import json
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
 
@@ -70,10 +71,30 @@ def timeliness(check: Check, value: object, run_date: date) -> str:
     return ""
 
 
+def uniqueness(check: Check, records: list[Record], run_date: date) -> list[str]:
+    # Values are compared as JSON values: 1, 1.0, "1" and true all differ, strings are
+    # compared exactly, and lists and objects by content (object key order does not matter).
+    def key(value: object) -> str:
+        return json.dumps(value, sort_keys=True)
+
+    values = [record.data.get(check.field) for record in records]
+    counts = Counter(key(value) for value in values if value is not None)
+    details = []
+    for value in values:
+        if value is None:
+            details.append(f"{check.field} is missing")
+        elif (count := counts[key(value)]) > 1:
+            details.append(f"{check.field}={value!r} is shared by {count} records")
+        else:
+            details.append("")
+    return details
+
+
 EVALUATORS: dict[str, Evaluator] = {
     "completeness": each_record(completeness),
     "accuracy": each_record(accuracy),
     "timeliness": each_record(timeliness),
+    "uniqueness": uniqueness,
 }
 
 

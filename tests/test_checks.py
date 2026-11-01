@@ -94,3 +94,48 @@ def test_timeliness_passes_timestamps_after_the_reference(session, notifications
     # Later than 00:00 UTC on the run date: the age is negative, so never too old.
     result = outcomes(session, "timeliness", "updated_at", {"a": "2026-11-03T08:00:00Z"}, {"max_age_hours": 24})
     assert result == {"a": True}
+
+
+def test_uniqueness_passes_distinct_values_and_fails_every_duplicate(session, notifications):
+    result = outcomes(session, "uniqueness", "id", {"a": "x", "b": "y", "c": "x"})
+    assert result == {"a": False, "b": True, "c": False}
+
+
+def test_uniqueness_fails_missing_or_null_without_counting_them_as_duplicates(session, notifications):
+    # Missing and null fail as missing; two of them do not make each other duplicates, and
+    # they do not make the one real value a duplicate either.
+    result = outcomes(session, "uniqueness", "id", {"absent": ..., "null": None, "other_null": None, "a": "x"})
+    assert result == {"absent": False, "null": False, "other_null": False, "a": True}
+
+
+def test_uniqueness_compares_values_with_their_type(session, notifications):
+    # 1, 1.0, "1" and true are four different JSON values.
+    result = outcomes(session, "uniqueness", "id", {"int": 1, "float": 1.0, "str": "1", "bool": True})
+    assert result == {"int": True, "float": True, "str": True, "bool": True}
+
+
+def test_uniqueness_is_case_and_whitespace_sensitive(session, notifications):
+    result = outcomes(session, "uniqueness", "id", {"lower": "abc", "upper": "ABC", "padded": " abc"})
+    assert result == {"lower": True, "upper": True, "padded": True}
+
+
+def test_uniqueness_compares_lists_and_objects_by_value(session, notifications):
+    values = {"list": [1, 2], "same_list": [1, 2], "other_list": [2, 1],
+              "obj": {"a": 1, "b": 2}, "same_obj": {"b": 2, "a": 1}}
+    result = outcomes(session, "uniqueness", "id", values)
+    assert result == {"list": False, "same_list": False, "other_list": True, "obj": False, "same_obj": False}
+
+
+def test_uniqueness_treats_blank_strings_as_values(session, notifications):
+    # Blank is completeness' concern: one "" is unique, two collide.
+    result = outcomes(session, "uniqueness", "id", {"a": "", "b": "", "c": " "})
+    assert result == {"a": False, "b": False, "c": True}
+
+
+def test_uniqueness_detail_names_the_field_and_value(session, notifications):
+    outcomes(session, "uniqueness", "id", {"bad": "x", "bad2": "x", "ok": "y", "none": ...})
+    details = dict(session.execute(
+        select(Record.key, Result.detail).join(Result, Result.record_id == Record.id)
+    ).all())
+    assert details == {"bad": "id='x' is shared by 2 records", "bad2": "id='x' is shared by 2 records",
+                       "ok": "", "none": "id is missing"}
