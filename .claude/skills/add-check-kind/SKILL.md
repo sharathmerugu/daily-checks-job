@@ -36,7 +36,8 @@ each one and put them in the docs). At least:
   Do the same unless the rule clearly says otherwise.
 - **Wrong-type values** (a string where a number is expected, an unparseable timestamp, a
   dict or list where a scalar is expected): fail the record with a detail; **never raise**. An
-  exception aborts the whole run for every dataset.
+  exception aborts the whole run for every dataset. (Some existing kinds still raise on such
+  values; that is known and out of scope. Do not copy it, and do not change them.)
 - **Per record or per dataset?** A rule that compares a record with the others (uniqueness,
   "at most N rows per value", ...) needs every record of the dataset; see step 4.
 - **Equality and types**: is `1` the same as `1.0` or `"1"`? Is `True` the same as `1`
@@ -110,10 +111,14 @@ params you pass in these tests must be valid.
 
 ```bash
 uv run pytest tests/test_checks.py tests/test_declarations.py -q -k "<kind>"
+uv run pytest tests/test_declarations.py -q
 ```
 
 (`docker compose run --rm app pytest ...` also works; `uv run` needs
-`docker compose up -d db` for Postgres on port 55432.) The new tests must fail now.
+`docker compose up -d db` for Postgres on port 55432.) The new check tests must fail now with
+`unknown check kind '<kind>'`, and `test_a_valid_declaration_of_each_kind` with a
+`ValidationError`. The new *invalid*-declaration cases already pass (an unknown kind is
+rejected anyway); that is expected, and they start meaning something once the kind exists.
 
 ## 3. Declaration: `app/declarations.py`
 
@@ -140,8 +145,9 @@ Write one function next to the other kinds and register it in `EVALUATORS`.
   directly as `"<kind>": <kind>`. Read values with `record.data.get(check.field)`, compute what
   you need over all records first (e.g. a `collections.Counter`), then return exactly one
   detail per record, in the order given. Do not count missing values as duplicates of each
-  other; they fail as missing. Make values hashable before counting (e.g. `json.dumps(value,
-  sort_keys=True)` for lists and dicts, or fail them as the wrong type, per your decision).
+  other; they fail as missing. Make values hashable before counting: `json.dumps(value, sort_keys=True)` works for every
+  JSON value and already keeps `1`, `1.0`, `"1"` and `true` apart; or fail lists and dicts as
+  the wrong type, per your decision.
 
 Rules for both:
 
