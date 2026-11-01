@@ -59,3 +59,38 @@ def test_timeliness_passes_when_recent(session, notifications):
     # 12 hours before 00:00 UTC on the run date, with a 24-hour limit
     result = outcomes(session, "timeliness", "updated_at", {"a": "2026-11-02T12:00:00Z"}, {"max_age_hours": 24})
     assert result == {"a": True}
+
+
+# Decisions on cases the rules leave open (see NOTES.md).
+
+
+def test_completeness_treats_any_whitespace_as_blank(session, notifications):
+    assert outcomes(session, "completeness", "email", {"tab": "\t", "newline": "\n "}) == {
+        "tab": False, "newline": False,
+    }
+
+
+def test_completeness_passes_falsy_non_string_values(session, notifications):
+    # 0, False and empty containers are present values, not blanks.
+    assert outcomes(session, "completeness", "n", {"zero": 0, "false": False, "empty_list": []}) == {
+        "zero": True, "false": True, "empty_list": True,
+    }
+
+
+def test_timeliness_passes_at_exactly_max_age(session, notifications):
+    # "no more than" 24 hours: exactly 24 hours before 00:00 UTC passes, a second more fails.
+    result = outcomes(session, "timeliness", "updated_at",
+                      {"edge": "2026-11-02T00:00:00Z", "over": "2026-11-01T23:59:59Z"}, {"max_age_hours": 24})
+    assert result == {"edge": True, "over": False}
+
+
+def test_timeliness_reads_timestamps_without_offset_as_utc(session, notifications):
+    result = outcomes(session, "timeliness", "updated_at",
+                      {"naive": "2026-11-02T00:00:00", "offset": "2026-11-02T01:00:00+01:00"}, {"max_age_hours": 24})
+    assert result == {"naive": True, "offset": True}
+
+
+def test_timeliness_passes_timestamps_after_the_reference(session, notifications):
+    # Later than 00:00 UTC on the run date: the age is negative, so never too old.
+    result = outcomes(session, "timeliness", "updated_at", {"a": "2026-11-03T08:00:00Z"}, {"max_age_hours": 24})
+    assert result == {"a": True}

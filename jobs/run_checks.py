@@ -9,6 +9,8 @@ each failure.
 
 import argparse
 import logging
+from collections import defaultdict
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
@@ -20,113 +22,96 @@ from app.notify import Failure, Notifier
 
 log = logging.getLogger("jobs.run_checks")
 
+# An evaluator gets a check, every record of the check's dataset (in id order) and the run
+# date, and returns one detail per record: "" when the record passed, otherwise why it failed.
+Evaluator = Callable[[Check, list[Record], date], list[str]]
+# A rule judges one record from the value of the check's field (None when the field is absent).
+Rule = Callable[[Check, object, date], str]
+
+
+def each_record(rule: Rule) -> Evaluator:
+    """Turns a rule about one record's value into an evaluator over a dataset's records."""
+
+    def evaluate(check: Check, records: list[Record], run_date: date) -> list[str]:
+        return [rule(check, record.data.get(check.field), run_date) for record in records]
+
+    return evaluate
+
+
+def completeness(check: Check, value: object, run_date: date) -> str:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return f"{check.field} is missing"
+    return ""
+
+
+def accuracy(check: Check, value: object, run_date: date) -> str:
+    if value is None:
+        return f"{check.field} is missing"
+    allowed = check.params.get("allowed")
+    if allowed is not None:
+        return "" if value in allowed else f"{check.field}={value!r} is not one of {allowed}"
+    low, high = check.params.get("min"), check.params.get("max")
+    if (low is not None and value < low) or (high is not None and value > high):
+        return f"{check.field}={value!r} is outside [{low}, {high}]"
+    return ""
+
+
+def timeliness(check: Check, value: object, run_date: date) -> str:
+    if value is None:
+        return f"{check.field} is missing"
+    max_age = timedelta(hours=check.params["max_age_hours"])
+    reference = datetime.combine(run_date, time.min, tzinfo=UTC)
+    updated = datetime.fromisoformat(value)
+    if updated.tzinfo is None:
+        updated = updated.replace(tzinfo=UTC)
+    age = reference - updated
+    if age > max_age:
+        return f"{check.field} is {age} old, more than {max_age}"
+    return ""
+
+
+EVALUATORS: dict[str, Evaluator] = {
+    "completeness": each_record(completeness),
+    "accuracy": each_record(accuracy),
+    "timeliness": each_record(timeliness),
+}
+
 
 def run_checks(session: Session, run_date: date) -> Run:
     run = Run(run_date=run_date, status="running", started_at=datetime.now(UTC))
     session.add(run)
     session.commit()
 
-    notifier = Notifier()
-
+    # Three queries load everything the run needs, however many datasets, checks and records.
     datasets = session.scalars(select(Dataset).order_by(Dataset.id)).all()
+    checks_by_dataset: dict[int, list[Check]] = defaultdict(list)
+    for check in session.scalars(select(Check).order_by(Check.dataset_id, Check.id)):
+        checks_by_dataset[check.dataset_id].append(check)
+    records_by_dataset: dict[int, list[Record]] = defaultdict(list)
+    for record in session.scalars(select(Record).order_by(Record.dataset_id, Record.id)):
+        records_by_dataset[record.dataset_id].append(record)
+
+    failures: list[tuple[str, Failure]] = []
     for dataset in datasets:
-        checks = session.scalars(
-            select(Check).where(Check.dataset_id == dataset.id).order_by(Check.id)
-        ).all()
-        for check in checks:
-            records = session.scalars(
-                select(Record).where(Record.dataset_id == dataset.id).order_by(Record.id)
-            ).all()
-
-            if check.kind == "completeness":
-                for record in records:
-                    value = record.data.get(check.field)
-                    if value is None or value == "":
-                        passed = False
-                        detail = f"{check.field} is missing"
-                    else:
-                        passed = True
-                        detail = ""
-                    session.add(
-                        Result(run_id=run.id, check_id=check.id, record_id=record.id,
-                               passed=passed, detail=detail)
-                    )
-                    session.commit()
-                    if not passed:
-                        owner = session.scalar(select(Dataset.owner).where(Dataset.id == dataset.id))
-                        notifier.send_failure(
-                            owner, Failure(dataset.name, check.name, record.key, detail)
-                        )
-
-            elif check.kind == "accuracy":
-                for record in records:
-                    value = record.data.get(check.field)
-                    if value is None:
-                        passed = False
-                        detail = f"{check.field} is missing"
-                    elif check.params.get("allowed") is not None:
-                        if value in check.params["allowed"]:
-                            passed = True
-                            detail = ""
-                        else:
-                            passed = False
-                            detail = f"{check.field}={value!r} is not one of {check.params['allowed']}"
-                    else:
-                        low = check.params.get("min")
-                        high = check.params.get("max")
-                        if (low is not None and value < low) or (high is not None and value > high):
-                            passed = False
-                            detail = f"{check.field}={value!r} is outside [{low}, {high}]"
-                        else:
-                            passed = True
-                            detail = ""
-                    session.add(
-                        Result(run_id=run.id, check_id=check.id, record_id=record.id,
-                               passed=passed, detail=detail)
-                    )
-                    session.commit()
-                    if not passed:
-                        owner = session.scalar(select(Dataset.owner).where(Dataset.id == dataset.id))
-                        notifier.send_failure(
-                            owner, Failure(dataset.name, check.name, record.key, detail)
-                        )
-
-            elif check.kind == "timeliness":
-                max_age = timedelta(hours=check.params["max_age_hours"])
-                reference = datetime.combine(run_date, time.max, tzinfo=UTC)
-                for record in records:
-                    value = record.data.get(check.field)
-                    if value is None:
-                        passed = False
-                        detail = f"{check.field} is missing"
-                    else:
-                        updated = datetime.fromisoformat(value)
-                        if updated.tzinfo is None:
-                            updated = updated.replace(tzinfo=UTC)
-                        age = reference - updated
-                        if age > max_age:
-                            passed = False
-                            detail = f"{check.field} is {age} old, more than {max_age}"
-                        else:
-                            passed = True
-                            detail = ""
-                    session.add(
-                        Result(run_id=run.id, check_id=check.id, record_id=record.id,
-                               passed=passed, detail=detail)
-                    )
-                    session.commit()
-                    if not passed:
-                        owner = session.scalar(select(Dataset.owner).where(Dataset.id == dataset.id))
-                        notifier.send_failure(
-                            owner, Failure(dataset.name, check.name, record.key, detail)
-                        )
-
-            else:
+        records = records_by_dataset[dataset.id]
+        for check in checks_by_dataset[dataset.id]:
+            evaluate = EVALUATORS.get(check.kind)
+            if evaluate is None:
                 raise ValueError(f"unknown check kind {check.kind!r} on check {check.id}")
+            for record, detail in zip(records, evaluate(check, records, run_date), strict=True):
+                session.add(Result(run_id=run.id, check_id=check.id, record_id=record.id,
+                                   passed=not detail, detail=detail))
+                if detail:
+                    failures.append((dataset.owner, Failure(dataset.name, check.name, record.key, detail)))
 
+    # The results and the finished run are written together, in batched inserts and one commit.
     run.status = "succeeded"
     run.finished_at = datetime.now(UTC)
     session.commit()
+
+    notifier = Notifier()
+    for owner, failure in failures:
+        notifier.send_failure(owner, failure)
     return run
 
 

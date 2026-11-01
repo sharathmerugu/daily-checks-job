@@ -1,6 +1,9 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
+from sqlalchemy.engine import Engine
 
 from app.models import Result, Run
 from jobs.run_checks import run_checks
@@ -46,3 +49,41 @@ def test_job_tells_the_owner_about_each_failure(session, notifications):
         ("ana@example.com", "a", "country known"),
         ("ana@example.com", "b", "email present"),
     ]
+
+
+@contextmanager
+def count_statements(engine: Engine) -> Iterator[list[str]]:
+    """Collects every SQL statement sent to the database inside the block."""
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, parameters, context, executemany) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+
+def add_customers(session, name: str, size: int) -> None:
+    add_dataset(session, name, checks=CHECKS, records={
+        f"r{i}": ({"email": "x@example.com", "country": "GB"} if i % 2 else {"country": "US"})
+        for i in range(size)
+    })
+
+
+def test_job_round_trips_do_not_grow_with_records_or_checks(session, notifications, engine):
+    add_customers(session, "small", 2)
+    with count_statements(engine) as small:
+        run_checks(session, RUN_DATE)
+
+    session.query(Result).delete()
+    session.query(Run).delete()
+    session.commit()
+    for i in range(3):
+        add_customers(session, f"big{i}", 20)
+    with count_statements(engine) as big:
+        run_checks(session, RUN_DATE)
+
+    assert len(big) == len(small)
