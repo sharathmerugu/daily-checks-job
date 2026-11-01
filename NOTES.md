@@ -23,11 +23,13 @@ was enough to run the tests (against Postgres on port 55432, with `uv run pytest
   (check, all of the dataset's records, run date), so a kind that needs to see the whole
   dataset (for example uniqueness) can be added without touching the loop.
 - **Round trips.** Measured on the fixtures for 2026-11-03 (11 datasets, 23 checks, 568 results):
-  before, 633 statements and 570 commits; after, **6 statements and 2 commits**, and the count
-  no longer grows with datasets, checks or records. The job now makes three SELECTs (datasets,
-  checks, records), inserts the results in batches (SQLAlchemy's insertmanyvalues), and uses
-  the owner it already loaded instead of querying it per failure.
-  `tests/test_job.py::test_job_round_trips_do_not_grow_with_records_or_checks` pins this.
+  before, 633 statements and 570 commits; after, **6 statements and 2 commits**. The number of
+  SELECTs is fixed at three (datasets, checks, records) however many datasets, checks or records
+  there are, and the owner comes from the dataset already loaded instead of a query per failure.
+  The results are written with batched INSERTs (SQLAlchemy's insertmanyvalues), so the INSERT
+  count still grows with the number of results, one statement per batch (about 1000 rows), not
+  per result. `tests/test_job.py::test_job_statement_count_does_not_grow_with_records_or_checks`
+  pins the SELECT count and the batching for runs that fit in one batch.
 - **Behaviour check.** On the fixtures, the old job with only the two fixes applied and the
   new job store the same results (same check, record, passed, detail, in the same order) and
   send the same notifications in the same order.
@@ -36,10 +38,15 @@ was enough to run the tests (against Postgres on port 55432, with `uv run pytest
 
 - The old job committed after every result. The new job writes the run row first (committed,
   status `running`, as before), then all results and the `succeeded` status in **one
-  transaction**. If the job crashes part-way, the run stays `running` as before, but no
-  partial results are left behind.
-- Notifications are sent **after** that commit, so an owner is never told about a result that
-  was not stored. Before, a crash part-way left the owners of earlier datasets already notified.
+  transaction**. If an evaluator raises part-way, the job commits the results evaluated so far
+  and re-raises, so, as before, those results are kept and the run stays `running`
+  (`test_job_keeps_the_results_it_completed_when_an_evaluator_raises`). Per-record kinds are
+  evaluated lazily for this, so the records judged before the failing value keep their results
+  too. A crash of the process itself (killed, connection lost) loses the uncommitted results,
+  where the old job had committed them one by one.
+- Notifications are sent **after** the final commit, so an owner is never told about a result
+  that was not stored. Before, a crash part-way left the owners of earlier datasets already
+  notified; now no digest is sent for a run that did not finish.
 - Unchanged on purpose (the brief asks to keep behaviour): an unknown kind or a value an
   evaluator cannot handle (for example a non-numeric value in a range check, an unparseable
   timestamp) still raises and stops the run; re-running a date still creates a second run.
@@ -130,7 +137,8 @@ Claude Code loads project skills from `.claude/skills/` at session start and pic
 its description; `/add-check-kind <name>: <rule>` invokes it explicitly. The file is plain
 Markdown, so any other assistant (Codex, Cursor, ...) can be told "follow
 `.claude/skills/add-check-kind/SKILL.md`". Headless: `claude -p "Use the add-check-kind skill to
-add ..."`.
+add ..."`. Checked: a fresh `claude -p` session started in the repository lists
+`add-check-kind` among both its skills and its slash commands.
 
 ### What it does
 
@@ -192,6 +200,11 @@ results unique per `(run_id, check_id, record_id)` and write them with `ON CONFL
 NOTHING` (or delete-and-replace a dataset's results in one transaction), and record digests in
 an outbox table keyed by `(run_id, owner)`: the digest row is written in the same transaction
 as the results, a sender marks it sent, and a rerun never re-sends a row already marked sent.
+The unique key stops a digest being *enqueued* twice, but not *delivered* twice: if the sender
+crashes after the provider accepts the digest and before it marks the row sent, the row is sent
+again. Where the email provider supports an idempotency key, send a stable one derived from
+`(run_id, owner)` so the provider drops the repeat; otherwise delivery is at-least-once, and the
+notes and the digest itself should say so (a rare duplicate digest, never a lost one).
 *Resume:* track progress per `(run_id, dataset_id)` with a status (`pending`, `done`); each
 dataset's results and its "done" mark commit together, so after a crash the rerun skips
 finished datasets and redoes only the one that was in flight. Digests go out once every

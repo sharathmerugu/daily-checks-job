@@ -11,7 +11,7 @@ import argparse
 import json
 import logging
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import select
@@ -25,7 +25,7 @@ log = logging.getLogger("jobs.run_checks")
 
 # An evaluator gets a check, every record of the check's dataset (in id order) and the run
 # date, and returns one detail per record: "" when the record passed, otherwise why it failed.
-Evaluator = Callable[[Check, list[Record], date], list[str]]
+Evaluator = Callable[[Check, list[Record], date], Iterable[str]]
 # A rule judges one record from the value of the check's field (None when the field is absent).
 Rule = Callable[[Check, object, date], str]
 
@@ -33,8 +33,9 @@ Rule = Callable[[Check, object, date], str]
 def each_record(rule: Rule) -> Evaluator:
     """Turns a rule about one record's value into an evaluator over a dataset's records."""
 
-    def evaluate(check: Check, records: list[Record], run_date: date) -> list[str]:
-        return [rule(check, record.data.get(check.field), run_date) for record in records]
+    def evaluate(check: Check, records: list[Record], run_date: date) -> Iterable[str]:
+        # Lazy, so the records judged before a rule raises keep their results (see run_checks).
+        return (rule(check, record.data.get(check.field), run_date) for record in records)
 
     return evaluate
 
@@ -113,18 +114,25 @@ def run_checks(session: Session, run_date: date) -> Run:
         records_by_dataset[record.dataset_id].append(record)
 
     failures_by_owner: dict[str, list[Failure]] = defaultdict(list)
-    for dataset in datasets:
-        records = records_by_dataset[dataset.id]
-        for check in checks_by_dataset[dataset.id]:
-            evaluate = EVALUATORS.get(check.kind)
-            if evaluate is None:
-                raise ValueError(f"unknown check kind {check.kind!r} on check {check.id}")
-            for record, detail in zip(records, evaluate(check, records, run_date), strict=True):
-                session.add(Result(run_id=run.id, check_id=check.id, record_id=record.id,
-                                   passed=not detail, detail=detail))
-                if detail:
-                    failures_by_owner[dataset.owner].append(
-                        Failure(dataset.name, check.name, record.key, detail))
+    try:
+        for dataset in datasets:
+            records = records_by_dataset[dataset.id]
+            for check in checks_by_dataset[dataset.id]:
+                evaluate = EVALUATORS.get(check.kind)
+                if evaluate is None:
+                    raise ValueError(f"unknown check kind {check.kind!r} on check {check.id}")
+                for record, detail in zip(records, evaluate(check, records, run_date), strict=True):
+                    session.add(Result(run_id=run.id, check_id=check.id, record_id=record.id,
+                                       passed=not detail, detail=detail))
+                    if detail:
+                        failures_by_owner[dataset.owner].append(
+                            Failure(dataset.name, check.name, record.key, detail))
+    except Exception:
+        # As before the refactor, a value an evaluator cannot handle stops the run, but the
+        # results already evaluated are kept; the run stays "running". One extra commit,
+        # only on this path.
+        session.commit()
+        raise
 
     # The results and the finished run are written together, in batched inserts and one commit.
     run.status = "succeeded"
