@@ -186,6 +186,13 @@ compare by content; detail `customer_id='C0007' is shared by 2 records`.
   because the skill file was created after this session started (it fell back to reading the
   file, as the prompt allowed). A fresh session, as reviewers will use, loads it normally.
 
+**Independent reusability check:** I also tested the skill using a fresh Claude Code agent in an
+isolated worktree, asking it to implement a different check kind (`pattern`, using regex
+validation). The agent used only the repository and skill instructions, updated all five
+required integration points, and completed the implementation without manual code changes. The
+full test suite passed with 56 tests (43 existing and 13 new). I discarded the experimental
+implementation afterward, leaving the assessment branch unchanged.
+
 ## Part 4: Written questions
 
 **1. Faster, safe to rerun, able to resume.** *Faster:* the job already loads everything in
