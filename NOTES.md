@@ -114,20 +114,139 @@ count that does not grow with the graph. Also checked by hand on the seeded fixt
 
 ## Part 3: Add-a-check-kind skill
 
-_In progress._
+The skill is a Claude Code project skill: `.claude/skills/add-check-kind/SKILL.md`.
+
+### How to run it
+
+From the repository root, with Postgres up (`make up`, or just `docker compose up -d db` for
+`uv run pytest`), start Claude Code and ask for the kind in plain words, for example:
+
+```
+claude
+> Add a check kind called not_negative: a record passes when the value is a number >= 0.
+```
+
+Claude Code loads project skills from `.claude/skills/` at session start and picks this one from
+its description; `/add-check-kind <name>: <rule>` invokes it explicitly. The file is plain
+Markdown, so any other assistant (Codex, Cursor, ...) can be told "follow
+`.claude/skills/add-check-kind/SKILL.md`". Headless: `claude -p "Use the add-check-kind skill to
+add ..."`.
+
+### What it does
+
+Pins down the inputs (name, rule, params) and makes the agent **decide and write down every edge
+the rule leaves open** (missing/null, wrong types, equality between `1`/`1.0`/`"1"`/`true`,
+case, whitespace, unhashable values, per-record vs whole-dataset). Then the five places from
+`CONTRIBUTING.md`, in order, **tests first** (with the failures it should see), and ends with
+`make test` (or `uv run pytest`) plus a job run on the fixtures. It finds code by grep and names
+(`CheckKind`, `PARAMS`, `EVALUATORS`, `each_record`, `outcomes`), never by line numbers, and
+names the traps a fresh agent falls into: `freshness` is used in a test as the example of an
+*unknown* kind; `add_dataset` does not validate params; params are stored raw (model defaults
+not applied); `kind` is at most 30 characters; evaluators must not query the database (a test
+pins the query count) and must not raise.
+
+### The uniqueness demonstration
+
+I ran the skill once through a **fresh Claude Code subagent with no context** from this session
+(only: kind name, the rule from the brief, and "use the add-check-kind skill; do not commit"). Its
+output is committed unchanged in `4c53f4c`: an empty `UniquenessParams`; a whole-dataset
+evaluator (a `Counter` keyed by `json.dumps(value, sort_keys=True)`); 7 check tests and 2
+declaration cases; a `customer id unique` check on `raw_customers.customer_id` (the fixtures
+already have `C0007` twice, so no records were changed); and a `docs/checks.md` section. It
+watched the new tests fail (`unknown check kind 'uniqueness'`) before implementing, then ran the
+full suite (43 passed) and the job on the fixtures (succeeded; exactly the two `C0007` records
+fail). I re-ran both myself before committing.
+
+Its decisions (tested and documented in `docs/checks.md`): every record sharing a value fails,
+not only the later ones; missing/null fail as missing and are never duplicates of each other;
+values compare strictly as JSON (`1`, `1.0`, `"1"`, `true` all differ); strings are case- and
+whitespace-sensitive and `""` is a value (blankness is completeness' job); lists and objects
+compare by content; detail `customer_id='C0007' is shared by 2 records`.
+
+### Manual fixes after running it
+
+- **To the generated code: none.** I reviewed the diff and found nothing to change.
+- **To the skill** (`90071f2`, from the agent's own report of what was unclear):
+  1. It said the new tests "must fail now", but the invalid-declaration cases pass before the
+     kind exists (an unknown kind is rejected anyway). Now it says which tests should fail and
+     with which error.
+  2. It told the agent never to raise on bad values while `accuracy` and `timeliness` still do
+     (kept on purpose in Part 1). Now it says so and tells the agent not to copy or change them.
+  3. It suggested `json.dumps` only for lists and dicts; it works for every JSON value and
+     already keeps `1`/`1.0`/`"1"`/`true` apart, so the skill now says that.
+- Not a skill problem, but worth knowing: the subagent's Skill tool said "Unknown skill"
+  because the skill file was created after this session started (it fell back to reading the
+  file, as the prompt allowed). A fresh session, as reviewers will use, loads it normally.
 
 ## Part 4: Written questions
 
-_To do._
+**1. Faster, safe to rerun, able to resume.** *Faster:* the job already loads everything in
+three queries and writes results in batches, but at scale it holds every record in memory and
+evaluates in one process. I would stream records per dataset (server-side cursor, `yield_per`),
+push simple per-record kinds into SQL where possible (completeness and range checks are a
+`CASE` over JSONB in one `INSERT ... SELECT`), write results with `COPY`, and fan out one task
+per dataset (the repo already has a Redis worker) since datasets are independent. *Safe to
+rerun:* make a run unique per date (`UNIQUE (run_date)` on `runs`, the job does
+`INSERT ... ON CONFLICT` and reuses the existing run instead of creating a second one), make
+results unique per `(run_id, check_id, record_id)` and write them with `ON CONFLICT DO
+NOTHING` (or delete-and-replace a dataset's results in one transaction), and record digests in
+an outbox table keyed by `(run_id, owner)`: the digest row is written in the same transaction
+as the results, a sender marks it sent, and a rerun never re-sends a row already marked sent.
+*Resume:* track progress per `(run_id, dataset_id)` with a status (`pending`, `done`); each
+dataset's results and its "done" mark commit together, so after a crash the rerun skips
+finished datasets and redoes only the one that was in flight. Digests go out once every
+dataset of the run is done (or per owner once their datasets are), driven from the outbox.
+
+**2. Impact on a graph with millions of datasets and edges.** Precompute it. Keep a
+transitive-closure table `downstream_of(ancestor_id, descendant_id, hops)` holding the fewest
+hops for every reachable pair, with an index on `ancestor_id`; the endpoint becomes one indexed
+lookup (`WHERE ancestor_id = :id ORDER BY hops`) plus the failure check. Lineage changes far
+less often than it is queried, so maintain the table when edges change: adding edge `u -> v`
+inserts `(a, d, h_a + 1 + h_d)` for every ancestor `a` of `u` (including `u`) and every
+descendant `d` of `v` (including `v`), keeping the minimum; removal is harder (shortest paths
+can lengthen), so recompute the affected ancestors' rows incrementally, or rebuild the table
+in the background and swap it in. If the closure is too big (wide fan-out makes it quadratic),
+fall back to caching per-dataset results keyed by a lineage version number, or run the BFS in a
+graph store, but the precomputed table is the simplest thing that answers in milliseconds. Since
+the result does not depend on the run, the same rows serve every run.
+
+**3. Keeping the skill working as the code changes.** Make drift fail loudly in CI rather
+than in a reviewer's session. (a) A guard test that the kinds agree everywhere:
+`set(get_args(CheckKind)) == set(PARAMS) == set(EVALUATORS)`, that every kind has a section in
+`docs/checks.md`, at least one fixture check and at least one test in `tests/test_checks.py`.
+The skill's "done" list then has an objective check, and a code change that breaks the
+five-places contract breaks the build. (b) The skill finds code by grep and by names
+(`EVALUATORS`, `CheckKind`, `PARAMS`, `outcomes`), not line numbers, and says "follow what is
+actually there" when the shape differs; keeping those names stable (or updating the skill in the
+same PR that renames them) is part of review, via a CODEOWNERS entry on the skill. (c) A
+scheduled CI job that runs the skill headless (`claude -p`) on a throwaway kind (for example
+"`not_negative`: passes when the value is a number >= 0") on a fresh checkout, then runs `make
+test` and the guard test, and throws the branch away; a failure means the skill and the code
+have drifted. (d) Keep `CONTRIBUTING.md` the source of truth and have the skill read it first,
+so a process change made in one place reaches the agent.
 
 ## How I used AI
 
-- Claude Code (Opus) throughout, driven by two of my own skills: one for planning
-  (three parallel read-only subagents: failing checks and job performance; digest and lineage
-  integration points; check-kind integration points and skill design), one for implementation.
-- Part 1: tests first (watched the new tests fail for the expected reasons), then the fix and
-  refactor; a throwaway script compared the old job (with only the two fixes) against the new
-  one on the fixtures and counted statements and commits.
+- **Tool:** Claude Code (Opus) for the whole exercise, in my terminal, driven by two of my own
+  skills: one for planning, one for implementing in small test-first slices. I reviewed every
+  diff before committing and kept the commits small.
+- **Discovery and planning:** three parallel read-only subagents (failing checks and job
+  performance; digest and lineage integration points; check-kind integration points and skill
+  design). I used their findings to write the plan, then approved and trimmed it: I dropped
+  ideas outside the brief (idempotent reruns, checkpoints, extra endpoints) and kept them for the
+  Part 4 answers.
+- **Part 1:** tests first, then the fix and refactor; a throwaway script compared the old job
+  (with only the two fixes) against the new one on the fixtures and counted statements and
+  commits. Not committed.
+- **Part 2:** tests written and watched failing before each change. One test I wrote had a
+  setup bug (a duplicate lineage edge); the failure was an `IntegrityError` rather than the
+  missing route, so I fixed the test before writing the endpoint. I tightened the 404 test
+  because it passed before the route existed (FastAPI's own 404).
+- **Part 3:** Claude drafted the skill from the discovery notes; I rewrote it once the Part 1
+  refactor had changed the job (the first draft described an `if/elif` chain and asserted on
+  `send_failure`, both gone). The uniqueness run was a fresh subagent, as described above.
+- **Part 4 and these notes:** drafted with Claude from the decisions made along the way,
+  edited by me.
 
 ## Time spent
 
@@ -135,4 +254,12 @@ _To fill in at submission._
 
 ## With more time
 
-_To fill in._
+- Make bad values fail the record instead of aborting the run (`accuracy` range on a
+  non-number, `timeliness` on an unparseable timestamp). I kept the existing behaviour because
+  Part 1 asked for it, but it is the most likely cause of a run "failing partway through".
+- The reliability work from Part 4 Q1: one run per date, unique results, a digest outbox,
+  per-dataset progress.
+- The guard test and scheduled skill run from Part 4 Q3.
+- Remove `Notifier.send_failure`, now unused, once nothing else depends on it.
+- For the impact query: an index on `results (run_id, passed)` for the failure check (only
+  `run_id` is indexed today), and the closure table from Part 4 Q2 once the graph grows.
