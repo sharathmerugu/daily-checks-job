@@ -51,8 +51,11 @@ coding; otherwise proceed and report the decisions at the end.
 
 ## 1. Read before writing
 
+Read all of `CONTRIBUTING.md`, not only its "Adding a check kind" section: the rest sets
+conventions (style, tests, commits) that apply here too.
+
 ```bash
-sed -n '/## Adding a check kind/,$p' CONTRIBUTING.md
+cat CONTRIBUTING.md
 cat docs/checks.md
 grep -n "CheckKind\|PARAMS\|class .*Params" app/declarations.py
 grep -n "^Evaluator\|^Rule\|def each_record\|^def \|EVALUATORS" jobs/run_checks.py
@@ -65,8 +68,8 @@ What you should find (if the code has moved on, follow what is actually there):
   `Literal`, and a `PARAMS` dict from kind to model. `CheckKind` and `PARAMS` are separate:
   update both.
 - `jobs/run_checks.py`: an `EVALUATORS` dict from kind to evaluator. An evaluator is
-  `(check, records, run_date) -> list[str]`: it gets every record of the check's dataset, in id
-  order, and returns **one detail per record, in the same order**: `""` for a pass, otherwise
+  `(check, records, run_date) -> Iterable[str]` (a list is fine): it gets every record of the
+  check's dataset, in id order, and returns **one detail per record, in the same order**: `""` for a pass, otherwise
   why it failed. `each_record(rule)` turns a per-value rule `(check, value, run_date) -> str`
   into an evaluator. The shared loop stores results and sends owners their digests; **do not
   touch the loop**, and do not query the database from an evaluator (a test pins the job's
@@ -115,7 +118,8 @@ uv run pytest tests/test_declarations.py -q
 ```
 
 (`docker compose run --rm app pytest ...` also works; `uv run` needs
-`docker compose up -d db` for Postgres on port 55432.) The new check tests must fail now with
+`docker compose up -d db` for Postgres on port 55432.) The first command selects only the check tests (the declaration tests' names do
+not contain the kind), so run both. The new check tests must fail now with
 `unknown check kind '<kind>'`, and `test_a_valid_declaration_of_each_kind` with a
 `ValidationError`. The new *invalid*-declaration cases already pass (an unknown kind is
 rejected anyway); that is expected, and they start meaning something once the kind exists.
@@ -144,15 +148,21 @@ Write one function next to the other kinds and register it in `EVALUATORS`.
   `def <kind>(check: Check, records: list[Record], run_date: date) -> list[str]`, registered
   directly as `"<kind>": <kind>`. Read values with `record.data.get(check.field)`, compute what
   you need over all records first (e.g. a `collections.Counter`), then return exactly one
-  detail per record, in the order given. Do not count missing values as duplicates of each
-  other; they fail as missing. Make values hashable before counting: `json.dumps(value, sort_keys=True)` works for every
+  detail per record, in the order given. How missing values take part is a step-0 decision for
+  your rule. For example, `uniqueness` fails them as missing and leaves them out of the counts,
+  so two missing values are not duplicates of each other; another rule may need otherwise.
+  Make values hashable before counting: `json.dumps(value, sort_keys=True)` works for every
   JSON value and already keeps `1`, `1.0`, `"1"` and `true` apart; or fail lists and dicts as
   the wrong type, per your decision.
 
 Rules for both:
 
-- Params are stored **as declared** (raw dict); model defaults are not applied in storage. Read
-  them through the model when there are defaults: `<Kind>Params.model_validate(check.params)`.
+- Params are stored **as declared** (raw dict): model defaults, coercions (`"5"` to `5`, an
+  int to a float) and normalisation done by validators are not applied in storage. If the
+  model has any of these, the evaluator must read params through the model,
+  `params = <Kind>Params.model_validate(check.params)`, and use `params.<name>` everywhere, so
+  the job evaluates exactly what validation accepted. Reading `check.params[...]` directly is
+  only safe when the model neither defaults nor changes any value.
 - Guard types with `isinstance` before comparing or parsing; exclude `bool` from numeric rules.
   One bad record must never raise.
 - Pass: `""`. Fail: short, naming the field and the value, in the style of the others:
@@ -203,11 +213,20 @@ make test
 `docker compose up -d db && uv run pytest`. Every test must pass, not only the new ones; if an
 unrelated test fails, report it by name rather than changing it.
 
-Then run the job on the fixtures and look at the new check's failures:
+Then run the job on the fixtures. **The seed drops and recreates every table in the database
+`DATABASE_URL` points at** (the compose stack's `checks` database by default), deleting all
+runs and results there. If that database holds anything that must be kept, or the user asked
+for an isolated database, point `DATABASE_URL` at another database first.
 
 ```bash
 make seed && make run-job        # the job must log "finished: succeeded"
 # or: uv run python -m scripts.seed && uv run python -m jobs.run_checks --date 2026-11-03
+```
+
+List the new check's failures in the latest run (same `DATABASE_URL` as the job):
+
+```bash
+uv run python -c "import sys; from sqlalchemy import select, func; from app.db import SessionLocal; from app.models import Check, Record, Result; s = SessionLocal(); run = s.scalar(select(func.max(Result.run_id))); [print(*row) for row in s.execute(select(Record.key, Result.detail).join(Result, Result.record_id == Record.id).join(Check, Check.id == Result.check_id).where(Result.run_id == run, Check.kind == sys.argv[1], Result.passed.is_(False)).order_by(Record.key))]" <kind>
 ```
 
 The failing records should be exactly the ones you expected in step 5.
@@ -223,5 +242,12 @@ The failing records should be exactly the ones you expected in step 5.
 - [ ] `make test` (or `uv run pytest`) fully green; the job succeeds on the fixtures
 - [ ] no unrelated changes; problems found elsewhere are reported, not fixed
 
-Finish with a short summary: files changed, the decisions you made, the test command you ran
-and its result.
+Finish with a short summary with these parts, in this order:
+
+1. **Files changed**, one line each.
+2. **Decisions** from step 0, including any name you chose (param names, for example).
+3. **Commands run** (tests, seed, job, failure listing) and the result of each.
+4. **Unresolved**: failing tests by name, anything left undone, and problems found elsewhere.
+   Write "none" if there are none.
+5. **Skill gaps**: each place where this skill was wrong, unclear or missing something, and
+   what you did instead. Write "none" if there are none.
