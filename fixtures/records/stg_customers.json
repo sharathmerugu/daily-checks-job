@@ -1,0 +1,253 @@
+[
+  {
+    "key": "C0001",
+    "data": {
+      "customer_id": "C0001",
+      "email": "customer1@example.com",
+      "country": "US",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0002",
+    "data": {
+      "customer_id": "C0002",
+      "email": "customer2@example.com",
+      "country": "DE",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0003",
+    "data": {
+      "customer_id": "C0003",
+      "email": "customer3@example.com",
+      "country": "FR",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0004",
+    "data": {
+      "customer_id": "C0004",
+      "email": "customer4@example.com",
+      "country": "US",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0005",
+    "data": {
+      "customer_id": "C0005",
+      "email": "customer5@example.com",
+      "country": "DE",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0006",
+    "data": {
+      "customer_id": "C0006",
+      "email": "customer6@example.com",
+      "country": "IN",
+      "segment": "enterprise"
+    }
+  },
+  {
+    "key": "C0007",
+    "data": {
+      "customer_id": "C0007",
+      "email": "customer7@example.com",
+      "country": "US",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0008",
+    "data": {
+      "customer_id": "C0008",
+      "email": "customer8@example.com",
+      "country": "FR",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0009",
+    "data": {
+      "customer_id": "C0009",
+      "email": "customer9@example.com",
+      "country": "GB",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0010",
+    "data": {
+      "customer_id": "C0010",
+      "email": "customer10@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0011",
+    "data": {
+      "customer_id": "C0011",
+      "email": "customer11@example.com",
+      "country": "FR",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0012",
+    "data": {
+      "customer_id": "C0012",
+      "email": "customer12@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0013",
+    "data": {
+      "customer_id": "C0013",
+      "email": "customer13@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0014",
+    "data": {
+      "customer_id": "C0014",
+      "email": "customer14@example.com",
+      "country": "US",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0015",
+    "data": {
+      "customer_id": "C0015",
+      "email": "customer15@example.com",
+      "country": "DE",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0016",
+    "data": {
+      "customer_id": "C0016",
+      "email": "customer16@example.com",
+      "country": "US",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0017",
+    "data": {
+      "customer_id": "C0017",
+      "country": "FR",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0018",
+    "data": {
+      "customer_id": "C0018",
+      "email": "customer18@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0019",
+    "data": {
+      "customer_id": "C0019",
+      "email": "customer19@example.com",
+      "country": "US",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0020",
+    "data": {
+      "customer_id": "C0020",
+      "email": "customer20@example.com",
+      "country": "GB",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0021",
+    "data": {
+      "customer_id": "C0021",
+      "email": "customer21@example.com",
+      "country": "GB",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0022",
+    "data": {
+      "customer_id": "C0022",
+      "email": "customer22@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0023",
+    "data": {
+      "customer_id": "C0023",
+      "email": "customer23@example.com",
+      "country": "FR",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0024",
+    "data": {
+      "customer_id": "C0024",
+      "email": "customer24@example.com",
+      "country": "IN",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0025",
+    "data": {
+      "customer_id": "C0025",
+      "email": "customer25@example.com",
+      "country": "GB",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0026",
+    "data": {
+      "customer_id": "C0026",
+      "email": "customer26@example.com",
+      "country": "IN",
+      "segment": "consumer"
+    }
+  },
+  {
+    "key": "C0027",
+    "data": {
+      "customer_id": "C0027",
+      "email": "customer27@example.com",
+      "country": "IN",
+      "segment": "business"
+    }
+  },
+  {
+    "key": "C0028",
+    "data": {
+      "customer_id": "C0028",
+      "email": "customer28@example.com",
+      "country": "US",
+      "segment": "consumer"
+    }
+  }
+]

@@ -1,0 +1,284 @@
+{
+  "datasets": [
+    {
+      "name": "raw_customers",
+      "owner": "ana@example.com",
+      "built_from": [],
+      "checks": [
+        {
+          "name": "email present",
+          "kind": "completeness",
+          "field": "email"
+        },
+        {
+          "name": "country known",
+          "kind": "accuracy",
+          "field": "country",
+          "params": {
+            "allowed": [
+              "US",
+              "GB",
+              "DE",
+              "FR",
+              "IN"
+            ]
+          }
+        },
+        {
+          "name": "updated in the last 48 hours",
+          "kind": "timeliness",
+          "field": "updated_at",
+          "params": {
+            "max_age_hours": 48
+          }
+        }
+      ]
+    },
+    {
+      "name": "raw_orders",
+      "owner": "ben@example.com",
+      "built_from": [],
+      "checks": [
+        {
+          "name": "customer present",
+          "kind": "completeness",
+          "field": "customer_id"
+        },
+        {
+          "name": "amount in range",
+          "kind": "accuracy",
+          "field": "amount",
+          "params": {
+            "min": 0,
+            "max": 10000
+          }
+        },
+        {
+          "name": "status known",
+          "kind": "accuracy",
+          "field": "status",
+          "params": {
+            "allowed": [
+              "placed",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ]
+          }
+        },
+        {
+          "name": "updated in the last 24 hours",
+          "kind": "timeliness",
+          "field": "updated_at",
+          "params": {
+            "max_age_hours": 24
+          }
+        }
+      ]
+    },
+    {
+      "name": "raw_payments",
+      "owner": "ben@example.com",
+      "built_from": [],
+      "checks": [
+        {
+          "name": "order present",
+          "kind": "completeness",
+          "field": "order_id"
+        },
+        {
+          "name": "method known",
+          "kind": "accuracy",
+          "field": "method",
+          "params": {
+            "allowed": [
+              "card",
+              "bank_transfer",
+              "wallet"
+            ]
+          }
+        },
+        {
+          "name": "paid in the last 72 hours",
+          "kind": "timeliness",
+          "field": "paid_at",
+          "params": {
+            "max_age_hours": 72
+          }
+        }
+      ]
+    },
+    {
+      "name": "stg_customers",
+      "owner": "ana@example.com",
+      "built_from": [
+        "raw_customers"
+      ],
+      "checks": [
+        {
+          "name": "email present",
+          "kind": "completeness",
+          "field": "email"
+        },
+        {
+          "name": "segment known",
+          "kind": "accuracy",
+          "field": "segment",
+          "params": {
+            "allowed": [
+              "consumer",
+              "business"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "stg_orders",
+      "owner": "ben@example.com",
+      "built_from": [
+        "raw_orders"
+      ],
+      "checks": [
+        {
+          "name": "customer present",
+          "kind": "completeness",
+          "field": "customer_id"
+        },
+        {
+          "name": "amount in range",
+          "kind": "accuracy",
+          "field": "amount",
+          "params": {
+            "min": 0,
+            "max": 10000
+          }
+        }
+      ]
+    },
+    {
+      "name": "order_facts",
+      "owner": "carla@example.com",
+      "built_from": [
+        "stg_orders",
+        "stg_customers",
+        "raw_payments"
+      ],
+      "checks": [
+        {
+          "name": "revenue not negative",
+          "kind": "accuracy",
+          "field": "revenue",
+          "params": {
+            "min": 0
+          }
+        },
+        {
+          "name": "margin is a fraction",
+          "kind": "accuracy",
+          "field": "margin",
+          "params": {
+            "min": -1,
+            "max": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "customer_ltv",
+      "owner": "carla@example.com",
+      "built_from": [
+        "order_facts",
+        "stg_customers"
+      ],
+      "checks": [
+        {
+          "name": "ltv not negative",
+          "kind": "accuracy",
+          "field": "ltv",
+          "params": {
+            "min": 0
+          }
+        },
+        {
+          "name": "computed in the last 24 hours",
+          "kind": "timeliness",
+          "field": "computed_at",
+          "params": {
+            "max_age_hours": 24
+          }
+        }
+      ]
+    },
+    {
+      "name": "revenue_dashboard",
+      "owner": "dev@example.com",
+      "built_from": [
+        "order_facts"
+      ],
+      "checks": [
+        {
+          "name": "revenue present",
+          "kind": "completeness",
+          "field": "revenue"
+        },
+        {
+          "name": "refreshed in the last 24 hours",
+          "kind": "timeliness",
+          "field": "refreshed_at",
+          "params": {
+            "max_age_hours": 24
+          }
+        }
+      ]
+    },
+    {
+      "name": "churn_scores",
+      "owner": "dev@example.com",
+      "built_from": [
+        "customer_ltv",
+        "customer_segments"
+      ],
+      "checks": [
+        {
+          "name": "score is a probability",
+          "kind": "accuracy",
+          "field": "score",
+          "params": {
+            "min": 0,
+            "max": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "customer_segments",
+      "owner": "dev@example.com",
+      "built_from": [
+        "churn_scores"
+      ],
+      "checks": [
+        {
+          "name": "segment present",
+          "kind": "completeness",
+          "field": "segment"
+        }
+      ]
+    },
+    {
+      "name": "marketing_spend",
+      "owner": "ana@example.com",
+      "built_from": [],
+      "checks": [
+        {
+          "name": "spend not negative",
+          "kind": "accuracy",
+          "field": "spend",
+          "params": {
+            "min": 0
+          }
+        }
+      ]
+    }
+  ]
+}

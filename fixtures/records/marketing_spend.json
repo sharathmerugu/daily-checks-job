@@ -1,0 +1,82 @@
+[
+  {
+    "key": "search-2026-10-24",
+    "data": {
+      "channel": "search",
+      "day": "2026-10-24",
+      "spend": 690.71
+    }
+  },
+  {
+    "key": "social-2026-10-25",
+    "data": {
+      "channel": "social",
+      "day": "2026-10-25",
+      "spend": 1944.58
+    }
+  },
+  {
+    "key": "email-2026-10-26",
+    "data": {
+      "channel": "email",
+      "day": "2026-10-26",
+      "spend": 240.98
+    }
+  },
+  {
+    "key": "display-2026-10-27",
+    "data": {
+      "channel": "display",
+      "day": "2026-10-27",
+      "spend": 190.66
+    }
+  },
+  {
+    "key": "video-2026-10-28",
+    "data": {
+      "channel": "video",
+      "day": "2026-10-28",
+      "spend": 1524.19
+    }
+  },
+  {
+    "key": "search-2026-10-29",
+    "data": {
+      "channel": "search",
+      "day": "2026-10-29",
+      "spend": 1226.49
+    }
+  },
+  {
+    "key": "social-2026-10-30",
+    "data": {
+      "channel": "social",
+      "day": "2026-10-30",
+      "spend": -100.0
+    }
+  },
+  {
+    "key": "email-2026-10-31",
+    "data": {
+      "channel": "email",
+      "day": "2026-10-31",
+      "spend": 839.36
+    }
+  },
+  {
+    "key": "display-2026-11-01",
+    "data": {
+      "channel": "display",
+      "day": "2026-11-01",
+      "spend": 1291.94
+    }
+  },
+  {
+    "key": "video-2026-11-02",
+    "data": {
+      "channel": "video",
+      "day": "2026-11-02",
+      "spend": 214.2
+    }
+  }
+]

@@ -1,0 +1,227 @@
+[
+  {
+    "key": "O0001",
+    "data": {
+      "order_id": "O0001",
+      "customer_id": "C0007",
+      "revenue": 126.1,
+      "margin": 0.051
+    }
+  },
+  {
+    "key": "O0002",
+    "data": {
+      "order_id": "O0002",
+      "customer_id": "C0002",
+      "revenue": 685.74,
+      "margin": 0.446
+    }
+  },
+  {
+    "key": "O0003",
+    "data": {
+      "order_id": "O0003",
+      "customer_id": "C0007",
+      "revenue": 359.85,
+      "margin": 1.4
+    }
+  },
+  {
+    "key": "O0004",
+    "data": {
+      "order_id": "O0004",
+      "customer_id": "C0010",
+      "revenue": 735.34,
+      "margin": 0.283
+    }
+  },
+  {
+    "key": "O0005",
+    "data": {
+      "order_id": "O0005",
+      "customer_id": "C0007",
+      "revenue": 96.5,
+      "margin": 0.065
+    }
+  },
+  {
+    "key": "O0006",
+    "data": {
+      "order_id": "O0006",
+      "customer_id": "C0006",
+      "revenue": 576.01,
+      "margin": 0.224
+    }
+  },
+  {
+    "key": "O0007",
+    "data": {
+      "order_id": "O0007",
+      "customer_id": "C0028",
+      "revenue": 531.79,
+      "margin": 0.103
+    }
+  },
+  {
+    "key": "O0008",
+    "data": {
+      "order_id": "O0008",
+      "customer_id": "C0027",
+      "revenue": 410.08,
+      "margin": 0.273
+    }
+  },
+  {
+    "key": "O0009",
+    "data": {
+      "order_id": "O0009",
+      "customer_id": "C0013",
+      "revenue": 256.79,
+      "margin": 0.064
+    }
+  },
+  {
+    "key": "O0010",
+    "data": {
+      "order_id": "O0010",
+      "customer_id": "C0021",
+      "revenue": 576.62,
+      "margin": 0.4
+    }
+  },
+  {
+    "key": "O0011",
+    "data": {
+      "order_id": "O0011",
+      "customer_id": "C0008",
+      "revenue": 226.16,
+      "margin": 0.082
+    }
+  },
+  {
+    "key": "O0012",
+    "data": {
+      "order_id": "O0012",
+      "customer_id": "C0007",
+      "revenue": -5.0,
+      "margin": 0.217
+    }
+  },
+  {
+    "key": "O0013",
+    "data": {
+      "order_id": "O0013",
+      "customer_id": "C0005",
+      "revenue": 556.32,
+      "margin": 0.234
+    }
+  },
+  {
+    "key": "O0014",
+    "data": {
+      "order_id": "O0014",
+      "customer_id": "C0011",
+      "revenue": 332.05,
+      "margin": 0.58
+    }
+  },
+  {
+    "key": "O0015",
+    "data": {
+      "order_id": "O0015",
+      "customer_id": "C0001",
+      "revenue": 204.95,
+      "margin": 0.391
+    }
+  },
+  {
+    "key": "O0016",
+    "data": {
+      "order_id": "O0016",
+      "customer_id": "C0007",
+      "revenue": 469.34,
+      "margin": 0.455
+    }
+  },
+  {
+    "key": "O0017",
+    "data": {
+      "order_id": "O0017",
+      "customer_id": "C0002",
+      "revenue": 685.91,
+      "margin": 0.098
+    }
+  },
+  {
+    "key": "O0018",
+    "data": {
+      "order_id": "O0018",
+      "customer_id": "C0016",
+      "revenue": 467.47,
+      "margin": 0.486
+    }
+  },
+  {
+    "key": "O0019",
+    "data": {
+      "order_id": "O0019",
+      "customer_id": "C0010",
+      "revenue": 534.13,
+      "margin": 0.462
+    }
+  },
+  {
+    "key": "O0020",
+    "data": {
+      "order_id": "O0020",
+      "customer_id": "C0025",
+      "revenue": 562.25,
+      "margin": 0.056
+    }
+  },
+  {
+    "key": "O0021",
+    "data": {
+      "order_id": "O0021",
+      "customer_id": "C0025",
+      "revenue": 168.04,
+      "margin": 0.087
+    }
+  },
+  {
+    "key": "O0022",
+    "data": {
+      "order_id": "O0022",
+      "customer_id": "C0014",
+      "revenue": 770.25,
+      "margin": 0.329
+    }
+  },
+  {
+    "key": "O0023",
+    "data": {
+      "order_id": "O0023",
+      "customer_id": "C0017",
+      "revenue": 548.17,
+      "margin": 0.297
+    }
+  },
+  {
+    "key": "O0024",
+    "data": {
+      "order_id": "O0024",
+      "customer_id": "C0004",
+      "revenue": 558.73,
+      "margin": 0.548
+    }
+  },
+  {
+    "key": "O0025",
+    "data": {
+      "order_id": "O0025",
+      "customer_id": "C0003",
+      "revenue": 483.16,
+      "margin": 0.33
+    }
+  }
+]

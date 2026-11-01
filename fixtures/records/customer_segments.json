@@ -1,0 +1,142 @@
+[
+  {
+    "key": "C0001",
+    "data": {
+      "customer_id": "C0001",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0002",
+    "data": {
+      "customer_id": "C0002",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0003",
+    "data": {
+      "customer_id": "C0003",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0004",
+    "data": {
+      "customer_id": "C0004",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0005",
+    "data": {
+      "customer_id": "C0005",
+      "segment": "new"
+    }
+  },
+  {
+    "key": "C0006",
+    "data": {
+      "customer_id": "C0006",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0007",
+    "data": {
+      "customer_id": "C0007",
+      "segment": "new"
+    }
+  },
+  {
+    "key": "C0008",
+    "data": {
+      "customer_id": "C0008",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0009",
+    "data": {
+      "customer_id": "C0009",
+      "segment": "new"
+    }
+  },
+  {
+    "key": "C0010",
+    "data": {
+      "customer_id": "C0010",
+      "segment": ""
+    }
+  },
+  {
+    "key": "C0011",
+    "data": {
+      "customer_id": "C0011",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0012",
+    "data": {
+      "customer_id": "C0012",
+      "segment": "new"
+    }
+  },
+  {
+    "key": "C0013",
+    "data": {
+      "customer_id": "C0013",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0014",
+    "data": {
+      "customer_id": "C0014",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0015",
+    "data": {
+      "customer_id": "C0015",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0016",
+    "data": {
+      "customer_id": "C0016",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0017",
+    "data": {
+      "customer_id": "C0017",
+      "segment": "new"
+    }
+  },
+  {
+    "key": "C0018",
+    "data": {
+      "customer_id": "C0018",
+      "segment": "loyal"
+    }
+  },
+  {
+    "key": "C0019",
+    "data": {
+      "customer_id": "C0019",
+      "segment": "at_risk"
+    }
+  },
+  {
+    "key": "C0020",
+    "data": {
+      "customer_id": "C0020",
+      "segment": "new"
+    }
+  }
+]

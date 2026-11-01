@@ -1,0 +1,142 @@
+[
+  {
+    "key": "C0001",
+    "data": {
+      "customer_id": "C0001",
+      "score": 0.382
+    }
+  },
+  {
+    "key": "C0002",
+    "data": {
+      "customer_id": "C0002",
+      "score": 0.613
+    }
+  },
+  {
+    "key": "C0003",
+    "data": {
+      "customer_id": "C0003",
+      "score": 0.458
+    }
+  },
+  {
+    "key": "C0004",
+    "data": {
+      "customer_id": "C0004",
+      "score": 1.2
+    }
+  },
+  {
+    "key": "C0005",
+    "data": {
+      "customer_id": "C0005",
+      "score": 0.434
+    }
+  },
+  {
+    "key": "C0006",
+    "data": {
+      "customer_id": "C0006",
+      "score": 0.337
+    }
+  },
+  {
+    "key": "C0007",
+    "data": {
+      "customer_id": "C0007",
+      "score": 0.931
+    }
+  },
+  {
+    "key": "C0008",
+    "data": {
+      "customer_id": "C0008",
+      "score": 0.282
+    }
+  },
+  {
+    "key": "C0009",
+    "data": {
+      "customer_id": "C0009",
+      "score": 0.103
+    }
+  },
+  {
+    "key": "C0010",
+    "data": {
+      "customer_id": "C0010",
+      "score": 0.771
+    }
+  },
+  {
+    "key": "C0011",
+    "data": {
+      "customer_id": "C0011",
+      "score": 0.655
+    }
+  },
+  {
+    "key": "C0012",
+    "data": {
+      "customer_id": "C0012",
+      "score": 0.536
+    }
+  },
+  {
+    "key": "C0013",
+    "data": {
+      "customer_id": "C0013",
+      "score": 0.051
+    }
+  },
+  {
+    "key": "C0014",
+    "data": {
+      "customer_id": "C0014",
+      "score": 0.809
+    }
+  },
+  {
+    "key": "C0015",
+    "data": {
+      "customer_id": "C0015",
+      "score": 0.156
+    }
+  },
+  {
+    "key": "C0016",
+    "data": {
+      "customer_id": "C0016",
+      "score": 0.305
+    }
+  },
+  {
+    "key": "C0017",
+    "data": {
+      "customer_id": "C0017",
+      "score": 0.787
+    }
+  },
+  {
+    "key": "C0018",
+    "data": {
+      "customer_id": "C0018",
+      "score": 0.218
+    }
+  },
+  {
+    "key": "C0019",
+    "data": {
+      "customer_id": "C0019",
+      "score": 0.455
+    }
+  },
+  {
+    "key": "C0020",
+    "data": {
+      "customer_id": "C0020",
+      "score": 0.388
+    }
+  }
+]
